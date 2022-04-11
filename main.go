@@ -1,7 +1,13 @@
 package main
 
-import "log"
+import (
+	"os"
+
+	"github.com/ipfs-git/ipgit/commands"
+)
 
 func main() {
-	log.Print("Hello, World!")
+	app := commands.NewApp()
+
+	os.Exit(app.Run(os.Args, os.Stdout))
 }
