@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/ipfs-git/ipgit/blocks"
+	"github.com/ipfs/go-cid"
+	"github.com/ipld/go-ipld-prime"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	"github.com/teris-io/cli"
 )
 
@@ -23,12 +27,40 @@ func hashObjectAction(args []string, options map[string]string) int {
 			return 1
 		}
 
-		blockType := "blob"
+		typ := "blob"
 		if val, ok := options["type"]; ok {
-			blockType = val
+			typ = val
 		}
 
-		fmt.Printf("%s => %s", blockType, rawFile)
+		var node ipld.Node
+
+		switch typ {
+		case "blob":
+			node, err = blocks.CreateBlobNode(rawFile)
+		default:
+			fmt.Printf("unhandled or unimplemented type %q\n", typ)
+			return 1
+		}
+		if err != nil {
+			fmt.Printf("failed to create a blob node: %s\n", err)
+			return 1
+		}
+
+		lp := cidlink.LinkPrototype{Prefix: cid.Prefix{
+			Version:  1,    // Usually '1'.
+			Codec:    0x71, // 0x71 means "dag-cbor" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+			MhType:   0x13, // 0x20 means "sha2-512" -- See the multicodecs table: https://github.com/multiformats/multicodec/
+			MhLength: 64,   // sha2-512 hash has a 64-byte sum.
+		}}
+
+		rawNode, err := node.AsBytes()
+		if err != nil {
+			fmt.Printf("failed to convert the node as bytes: %s\n", err)
+			return 1
+		}
+		lnk := lp.BuildLink(rawNode)
+
+		fmt.Println(lnk)
 	}
 
 	return 0
